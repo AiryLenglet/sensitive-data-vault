@@ -1,0 +1,200 @@
+openapi: "3.0.3"
+info:
+  version: "0.0.1"
+  title: "Swagger Sensitive Data Vault"
+  description: |
+    Sensitive Data Vault POC, API responsible for managing sensitive data.<br>
+    Securize sensitive data with encryption.<br>
+    Provide tokenization of sensitive data for third party API.
+paths:
+
+  "/v1/vault/processes/{processId}":
+    post:
+      tags:
+        - storage
+      parameters:
+        - name: "processId"
+          in: "path"
+          description: "ID of process we want to store data for"
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              $ref: "#/components/schemas/StoreObjectRequest"
+      responses:
+        "200":
+          description: "successful operation"
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/StoreObjectResponse"
+
+  "/v1/vault/processes/{processId}/token":
+    post:
+      tags:
+        - detokenization
+      parameters:
+        - name: "processId"
+          in: "path"
+          description: "ID of process we want to store data for"
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              $ref: "#/components/schemas/DetokenizeRequest"
+      responses:
+        "200":
+          description: "successful operation"
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/DetokenizeResponse"
+
+components:
+  schemas:
+
+    StoreFieldRequest:
+      type: "object"
+      properties:
+        value:
+          type: "string"
+        type:
+          type: "string"
+        readOnly:
+          type: "boolean"
+      required:
+        - value
+
+    StoreObjectRequest:
+      oneOf:
+        - type: "object"
+          additionalProperties:
+            $ref: "#/components/schemas/StoreFieldRequest"
+        - type: "object"
+          additionalProperties:
+            $ref: "#/components/schemas/StoreObjectRequest"
+      example:
+        clientName:
+          value: "Jim Morrison"
+        clientIdentifier:
+          value: "56456568458"
+          type: "clientId"
+          readOnly: true
+        transaction:
+          currency:
+            value: "USD"
+          id:
+            value: "A1B2C-D3E4F-G5H6I-J7K8L-M9N0P"
+          amount:
+            value: 45.89
+
+    StoreFieldResponse:
+      type: "object"
+      properties:
+        name:
+          type: "string"
+          example: "clientName"
+        token:
+          type: "string"
+          example: "vault:83d0cea5aaaa7dde261f7f92362f31d555846d4addd1b5"
+
+    StoreObjectResponse:
+      oneOf:
+        - type: "object"
+          additionalProperties:
+            $ref: "#/components/schemas/StoreFieldResponse"
+        - type: "object"
+          additionalProperties:
+            $ref: "#/components/schemas/StoreObjectResponse"
+      example:
+        clientName:
+          token: "vault:83d0cea5aaaa7dde261f7f92362f31d555846d4addd1b5"
+        clientIdentifier:
+          token: "vault:9a69ee011001c6e2f3dc94201b439d2c"
+        transaction:
+          curreny:
+            token: "vault:527dfd78a0e7eed4c79"
+          id:
+            token: "vault:09553154da33d5edba227490a9bbf8631711bbb8a4"
+          amount:
+            token: "vault:90a77c6b70167c6fb3278"
+
+    DetokenizedObjectRequest:
+      oneOf:
+        - type: "object"
+          additionalProperties:
+            $ref: "#/components/schemas/DetokenizedFieldRequest"
+        - type: "object"
+          additionalProperties:
+            $ref: "#/components/schemas/DetokenizedObjectRequest"
+
+    DetokenizedFieldRequest:
+      type: "object"
+      properties:
+        token:
+          type: "string"
+      required:
+        - token
+
+    DetokenizeRequest:
+      type: "object"
+      additionalProperties:
+        $ref: "#/components/schemas/DetokenizedObjectRequest"
+      example:
+        clientName:
+          token: "vault:83d0cea5aaaa7dde261f7f92362f31d555846d4addd1b5"
+        clientIdentifier:
+          token: "vault:9a69ee011001c6e2f3dc94201b439d2c"
+        transaction:
+          curreny:
+            token: "vault:527dfd78a0e7eed4c79"
+          id:
+            token: "vault:09553154da33d5edba227490a9bbf8631711bbb8a4"
+          amount:
+            token: "vault:90a77c6b70167c6fb3278"
+
+    DetokenizedObjectResponse:
+      oneOf:
+        - type: "object"
+          additionalProperties:
+            $ref: "#/components/schemas/DetokenizedFieldResponse"
+        - type: "object"
+          additionalProperties:
+            $ref: "#/components/schemas/DetokenizedObjectResponse"
+
+    DetokenizedFieldResponse:
+      type: "object"
+      properties:
+        value:
+          type: "string"
+        type:
+          type: "string"
+        readOnly:
+          type: "boolean"
+
+    DetokenizeResponse:
+      type: "object"
+      additionalProperties:
+        $ref: "#/components/schemas/DetokenizedObjectResponse"
+      example:
+        clientName:
+          value: "Jim Morrison"
+        clientIdentifier:
+          value: "56456568458"
+          type: "clientId"
+          readOnly: true
+        transaction:
+          currency:
+            value: "USD"
+          id:
+            value: "A1B2C-D3E4F-G5H6I-J7K8L-M9N0P"
+          amount:
+            value: 45.89
