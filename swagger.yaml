@@ -64,14 +64,14 @@ components:
     StoreFieldRequest:
       type: "object"
       properties:
-        value:
+        $value:
           type: "string"
-        type:
+        $type:
           type: "string"
-        readOnly:
+        $readOnly:
           type: "boolean"
       required:
-        - value
+        - $value
 
     StoreObjectRequest:
       oneOf:
@@ -83,26 +83,26 @@ components:
             $ref: "#/components/schemas/StoreObjectRequest"
       example:
         clientName:
-          value: "Jim Morrison"
+          $value: "Jim Morrison"
         clientIdentifier:
-          value: "56456568458"
-          type: "clientId"
-          readOnly: true
+          $value: "56456568458"
+          $type: "clientId"
+          $readOnly: true
         transaction:
           currency:
-            value: "USD"
+            $value: "USD"
           id:
-            value: "A1B2C-D3E4F-G5H6I-J7K8L-M9N0P"
+            $value: "A1B2C-D3E4F-G5H6I-J7K8L-M9N0P"
           amount:
-            value: 45.89
+            $value: 45.89
 
     StoreFieldResponse:
       type: "object"
       properties:
-        name:
+        $name:
           type: "string"
           example: "clientName"
-        token:
+        $token:
           type: "string"
           example: "vault:83d0cea5aaaa7dde261f7f92362f31d555846d4addd1b5"
 
@@ -116,16 +116,16 @@ components:
             $ref: "#/components/schemas/StoreObjectResponse"
       example:
         clientName:
-          token: "vault:83d0cea5aaaa7dde261f7f92362f31d555846d4addd1b5"
+          $token: "vault:83d0cea5aaaa7dde261f7f92362f31d555846d4addd1b5"
         clientIdentifier:
-          token: "vault:9a69ee011001c6e2f3dc94201b439d2c"
+          $token: "vault:9a69ee011001c6e2f3dc94201b439d2c"
         transaction:
           curreny:
-            token: "vault:527dfd78a0e7eed4c79"
+            $token: "vault:527dfd78a0e7eed4c79"
           id:
-            token: "vault:09553154da33d5edba227490a9bbf8631711bbb8a4"
+            $token: "vault:09553154da33d5edba227490a9bbf8631711bbb8a4"
           amount:
-            token: "vault:90a77c6b70167c6fb3278"
+            $token: "vault:90a77c6b70167c6fb3278"
 
     DetokenizedObjectRequest:
       oneOf:
@@ -139,10 +139,10 @@ components:
     DetokenizedFieldRequest:
       type: "object"
       properties:
-        token:
+        $token:
           type: "string"
       required:
-        - token
+        - $token
 
     DetokenizeRequest:
       type: "object"
@@ -150,16 +150,16 @@ components:
         $ref: "#/components/schemas/DetokenizedObjectRequest"
       example:
         clientName:
-          token: "vault:83d0cea5aaaa7dde261f7f92362f31d555846d4addd1b5"
+          $token: "vault:83d0cea5aaaa7dde261f7f92362f31d555846d4addd1b5"
         clientIdentifier:
-          token: "vault:9a69ee011001c6e2f3dc94201b439d2c"
+          $token: "vault:9a69ee011001c6e2f3dc94201b439d2c"
         transaction:
           curreny:
-            token: "vault:527dfd78a0e7eed4c79"
+            $token: "vault:527dfd78a0e7eed4c79"
           id:
-            token: "vault:09553154da33d5edba227490a9bbf8631711bbb8a4"
+            $token: "vault:09553154da33d5edba227490a9bbf8631711bbb8a4"
           amount:
-            token: "vault:90a77c6b70167c6fb3278"
+            $token: "vault:90a77c6b70167c6fb3278"
 
     DetokenizedObjectResponse:
       oneOf:
@@ -173,11 +173,11 @@ components:
     DetokenizedFieldResponse:
       type: "object"
       properties:
-        value:
+        $value:
           type: "string"
-        type:
+        $type:
           type: "string"
-        readOnly:
+        $readOnly:
           type: "boolean"
 
     DetokenizeResponse:
@@ -186,15 +186,15 @@ components:
         $ref: "#/components/schemas/DetokenizedObjectResponse"
       example:
         clientName:
-          value: "Jim Morrison"
+          $value: "Jim Morrison"
         clientIdentifier:
-          value: "56456568458"
-          type: "clientId"
-          readOnly: true
+          $value: "56456568458"
+          $type: "clientId"
+          $readOnly: true
         transaction:
           currency:
-            value: "USD"
+            $value: "USD"
           id:
-            value: "A1B2C-D3E4F-G5H6I-J7K8L-M9N0P"
+            $value: "A1B2C-D3E4F-G5H6I-J7K8L-M9N0P"
           amount:
-            value: 45.89
+            $value: 45.89
