@@ -1,4 +1,4 @@
-package me.lenglet.common;
+package me.lenglet.common.impl;
 
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.model.IndexOptions;

@@ -1,5 +1,6 @@
-package me.lenglet.common;
+package me.lenglet.common.impl;
 
+import me.lenglet.common.TokenGenerator;
 import org.springframework.stereotype.Service;
 
 import java.util.UUID;
