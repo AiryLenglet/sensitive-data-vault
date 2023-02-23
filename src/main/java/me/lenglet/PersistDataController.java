@@ -1,11 +1,12 @@
 package me.lenglet;
 
+import com.fasterxml.jackson.annotation.JsonAnySetter;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.mongodb.client.MongoClient;
 import me.lenglet.common.EncryptionService;
+import me.lenglet.common.HashService;
 import me.lenglet.common.TokenGenerator;
 import org.bson.Document;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -13,12 +14,11 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.Iterator;
-import java.util.Spliterator;
-import java.util.Spliterators;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
-import java.util.stream.StreamSupport;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+
+import static me.lenglet.common.Bsons.objectId;
 
 @RestController
 public class PersistDataController {
@@ -27,25 +27,27 @@ public class PersistDataController {
     private final EncryptionService encryptionService;
     private final TokenGenerator tokenGenerator;
     private final MongoClient mongoClient;
+    private final HashService hashService;
 
     public PersistDataController(
             EncryptionService encryptionService,
             TokenGenerator tokenGenerator,
-            MongoClient mongoClient
+            MongoClient mongoClient,
+            HashService hashService
     ) {
         this.encryptionService = encryptionService;
         this.tokenGenerator = tokenGenerator;
         this.mongoClient = mongoClient;
+        this.hashService = hashService;
     }
 
     @PostMapping("/vaults/{vaultName}")
     public String execute(
             @PathVariable("vaultName") String vaultName,
-            @RequestBody String json
+            @RequestBody PersistDataRequestDto request
     ) throws JsonProcessingException {
-        final var node = new ObjectMapper().readTree(json);
 
-        final var doc = this.toDoc(node);
+        final var doc = this.toDoc(request);
         mongoClient.getDatabase("admin")
                 .getCollection(vaultName)
                 .insertOne(doc);
@@ -53,81 +55,71 @@ public class PersistDataController {
         return toJson(doc);
     }
 
+    public static class PersistDataRequestDto {
+        @JsonProperty("$objectId")
+        private String objectId;
+        @JsonAnySetter
+        private Map<String, SecretDto> secrets;
+
+        public String getObjectId() {
+            return objectId;
+        }
+
+        public void setObjectId(String objectId) {
+            this.objectId = objectId;
+        }
+
+        public Map<String, SecretDto> getSecrets() {
+            return secrets;
+        }
+
+        public void setSecrets(Map<String, SecretDto> secrets) {
+            this.secrets = secrets;
+        }
+    }
+
+    public record SecretDto(
+            @JsonProperty("$value") String value,
+            @JsonProperty("$type") String type,
+            @JsonProperty("$immutable") Boolean immutable
+    ) {
+    }
+
     private String toJson(Document document) throws JsonProcessingException {
         final var mapper = new ObjectMapper();
         final var result = mapper.createObjectNode();
 
-        mapDoc(document, result);
+        result.put("$objectId", document.getString("objectId"));
+        for (Document secret : document.getList("secrets", Document.class, Collections.emptyList())) {
+            result.put(secret.getString("key"), secret.getString("token"));
+        }
 
         return mapper.writeValueAsString(result);
     }
 
-    private static void mapDoc(Document document, ObjectNode result) {
-        for (final var entry : document.entrySet()) {
+    Document toDoc(PersistDataRequestDto jsonNode) {
+        final var doc = objectId(jsonNode.getObjectId());
 
-            if (entry.getValue() instanceof String s) {
-                result.put(entry.getKey(), s);
-            } else if (entry.getValue() instanceof Document d) {
-                final var obj = result.putObject(entry.getKey());
-                mapDoc(d, obj);
-            } else if ("_id".equals(entry.getKey())) {
-                result.put("$id", entry.getValue().toString());
-            }
-        }
+        final var secrets = jsonNode.getSecrets().entrySet().stream()
+                .filter(e -> !e.getKey().startsWith("$"))
+                .map(e -> createSecretAttributeDoc(e.getKey(), e.getValue()))
+                .toList();
+
+        doc.append("secrets", secrets);
+        return doc;
     }
 
-    Document toDoc(JsonNode jsonNode) {
-        return this.toDoc(jsonNode, new Document());
-    }
+    private Document createSecretAttributeDoc(String field, SecretDto jsonNode) {
+        final var valueNode = jsonNode.value();
+        final var plaintextValue = valueNode;
+        final var cypherValue = this.encryptionService.encrypt(plaintextValue);
+        final var blindIndex = List.of(this.hashService.hash(plaintextValue));
 
-    Document toDoc(JsonNode jsonNode, Document root) {
-        if (jsonNode.isObject()) {
-            if (jsonNode.hasNonNull("$value")) {
-                final var valueNode = jsonNode.get("$value");
-                final var plaintextValue = extractStringValue(jsonNode, valueNode);
-                final var cypherValue = this.encryptionService.encrypt(plaintextValue);
-                root.append("$value", cypherValue)
-                        .append("$token", this.tokenGenerator.generate())
-                        .append("$type", "string");
-            } else {
-                this.stream(jsonNode.fields())
-                        .forEach(e -> {
-                            if (e.getValue().isArray()) {
-                                root.append(e.getKey(), this.stream(e.getValue().elements())
-                                        .map(this::toDoc)
-                                        .collect(Collectors.toList()));
-                            } else {
-                                root.append(e.getKey(), toDoc(e.getValue(), new Document()));
-                            }
-                        });
-            }
-        }
-        return root;
+        return new Document()
+                .append("key", field)
+                .append("value", cypherValue)
+                .append("token", this.tokenGenerator.generate())
+                .append("type", "string")
+                .append("index", blindIndex);
     }
-
-    private <T> Stream<T> stream(Iterator<T> iterator) {
-        return StreamSupport.stream(
-                Spliterators.spliteratorUnknownSize(iterator, Spliterator.ORDERED),
-                false
-        );
-    }
-
-    private String extractStringValue(JsonNode jsonNode, JsonNode valueNode) {
-        return switch (valueNode.getNodeType()) {
-            case BOOLEAN -> this.convertBoolean(valueNode);
-            case NUMBER -> this.convertNumber(valueNode);
-            case STRING -> valueNode.textValue();
-            default -> throw new IllegalArgumentException(valueNode.getNodeType() + " node type not handled");
-        };
-    }
-
-    private String convertBoolean(JsonNode jsonNode) {
-        return jsonNode.booleanValue() ? "true" : "false";
-    }
-
-    String convertNumber(JsonNode jsonNode) {
-        //TODO: update
-        return jsonNode.numberValue().toString();
-    }
-
 }

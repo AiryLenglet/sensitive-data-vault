@@ -8,14 +8,14 @@ info:
     Provide tokenization of sensitive data for third party API.
 paths:
 
-  "/v1/vault/processes/{processId}":
+  "/v1/vaults/{vaultId}":
     post:
       tags:
         - storage
       parameters:
-        - name: "processId"
+        - name: "vaultId"
           in: "path"
-          description: "ID of process we want to store data for"
+          description: "ID of vault we want to store an object in"
           required: true
           schema:
             type: string
@@ -33,14 +33,20 @@ paths:
               schema:
                 $ref: "#/components/schemas/StoreObjectResponse"
 
-  "/v1/vault/processes/{processId}/token":
+  "/v1/vaults/{vaultId}/{objectId}":
     post:
       tags:
         - detokenization
       parameters:
-        - name: "processId"
+        - name: "vaultId"
           in: "path"
-          description: "ID of process we want to store data for"
+          description: "ID of vault we want to fetch the object"
+          required: true
+          schema:
+            type: string
+        - name: "objectId"
+          in: "path"
+          description: "ID of object we want to fe"
           required: true
           schema:
             type: string
@@ -57,6 +63,33 @@ paths:
             "application/json":
               schema:
                 $ref: "#/components/schemas/DetokenizeResponse"
+    patch:
+      parameters:
+        - name: "vaultId"
+          in: "path"
+          description: "ID of vault we want to fetch the object"
+          required: true
+          schema:
+            type: string
+        - name: "objectId"
+          in: "path"
+          description: "ID of object we want to fe"
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              $ref: "#/components/schemas/UpdateObjectRequest"
+      responses:
+        "200":
+          description: "successful operation"
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/StoreObjectResponse"
 
 components:
   schemas:
@@ -74,27 +107,22 @@ components:
         - $value
 
     StoreObjectRequest:
-      oneOf:
-        - type: "object"
-          additionalProperties:
-            $ref: "#/components/schemas/StoreFieldRequest"
-        - type: "object"
-          additionalProperties:
-            $ref: "#/components/schemas/StoreObjectRequest"
+      type: "object"
+      properties:
+        $objectId:
+          type: "string"
+      additionalProperties:
+        $ref: "#/components/schemas/StoreFieldRequest"
+      required:
+        - $objectId
       example:
+        $objectId: transaction-1234
         clientName:
           $value: "Jim Morrison"
         clientIdentifier:
           $value: "56456568458"
           $type: "clientId"
           $readOnly: true
-        transaction:
-          currency:
-            $value: "USD"
-          id:
-            $value: "A1B2C-D3E4F-G5H6I-J7K8L-M9N0P"
-          amount:
-            $value: 45.89
 
     StoreFieldResponse:
       type: "object"
@@ -107,25 +135,14 @@ components:
           example: "vault:83d0cea5aaaa7dde261f7f92362f31d555846d4addd1b5"
 
     StoreObjectResponse:
-      oneOf:
-        - type: "object"
-          additionalProperties:
-            $ref: "#/components/schemas/StoreFieldResponse"
-        - type: "object"
-          additionalProperties:
-            $ref: "#/components/schemas/StoreObjectResponse"
+      type: "object"
+      additionalProperties:
+        $ref: "#/components/schemas/StoreFieldResponse"
       example:
         clientName:
           $token: "vault:83d0cea5aaaa7dde261f7f92362f31d555846d4addd1b5"
         clientIdentifier:
           $token: "vault:9a69ee011001c6e2f3dc94201b439d2c"
-        transaction:
-          curreny:
-            $token: "vault:527dfd78a0e7eed4c79"
-          id:
-            $token: "vault:09553154da33d5edba227490a9bbf8631711bbb8a4"
-          amount:
-            $token: "vault:90a77c6b70167c6fb3278"
 
     DetokenizedObjectRequest:
       oneOf:
@@ -153,22 +170,10 @@ components:
           $token: "vault:83d0cea5aaaa7dde261f7f92362f31d555846d4addd1b5"
         clientIdentifier:
           $token: "vault:9a69ee011001c6e2f3dc94201b439d2c"
-        transaction:
-          curreny:
-            $token: "vault:527dfd78a0e7eed4c79"
-          id:
-            $token: "vault:09553154da33d5edba227490a9bbf8631711bbb8a4"
-          amount:
-            $token: "vault:90a77c6b70167c6fb3278"
 
     DetokenizedObjectResponse:
-      oneOf:
-        - type: "object"
-          additionalProperties:
-            $ref: "#/components/schemas/DetokenizedFieldResponse"
-        - type: "object"
-          additionalProperties:
-            $ref: "#/components/schemas/DetokenizedObjectResponse"
+      additionalProperties:
+        $ref: "#/components/schemas/DetokenizedFieldResponse"
 
     DetokenizedFieldResponse:
       type: "object"
@@ -191,10 +196,19 @@ components:
           $value: "56456568458"
           $type: "clientId"
           $readOnly: true
-        transaction:
-          currency:
-            $value: "USD"
-          id:
-            $value: "A1B2C-D3E4F-G5H6I-J7K8L-M9N0P"
-          amount:
-            $value: 45.89
+
+    UpdateObjectRequest:
+      type: "object"
+      example:
+        - op: "add"
+          value:
+            clientCountry:
+              $value: "Switzerland"
+              $type: "country"
+              $readOnly: true
+        - op: "replace"
+          value:
+            clientName:
+              $value: "James Douglas Morrison"
+        - op: "remove"
+          value: "clientAddress"
